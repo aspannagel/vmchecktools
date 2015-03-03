@@ -5,7 +5,7 @@
 # description: re-install of vmware-tools after kernel update at boot
 ###
 #
-# $Id: vmchecktools,v 1.22 2015/03/03 09:21:39 aspannag Exp $
+# $Id: vmchecktools,v 1.23 2015/03/03 12:50:34 aspannag Exp $
 #
 
 
@@ -192,6 +192,17 @@ VM-TOOLS:
   Current: ${VMToolsVersion:=not installed}
   Avail:   ${VMToolsAvailVersion:=none}
   Latest:  ${VMToolsLatest:=}"
+
+# check for well known related rpms and provide infos
+which rpm >/dev/null 2>&1 && RPMINSTALL="$(rpm  -q vmware-tools-core open-vm-tools 2>/dev/null|grep -v '^package .* is not installed'|paste -s -d' ' -)"
+if [ "$RPMINSTALL" != "" ]
+then
+  VMToolsRPM="$(vmware-toolbox-cmd -v|tr -d '()')"
+VMStatus="$VMStatus
+VM-RPM:
+  Package: ${RPMINSTALL}
+  Version: ${VMToolsRPM}"
+fi
 
 ##
 ## All set, ready to go...
