@@ -2,8 +2,8 @@
 Features vmchecktools is used for:
 - make VMware-Tools installation/update for Linux/Unix as easy as rpm-managment
 - copy over pvscsi/vmxnet3 modules for new kernel BEFORE booting into it
-  and rebuild initrd, so they are used during boot (for older kernels)
-- reinstall vmware-tools while first boot into a certain kernel
+  and rebuild initrd, so they are used during boot (required for older kernels)
+- reinstall vmware-tools while first boot into a new kernel
 
 Some comments:
 - written as init-script, also usable as standalone script
