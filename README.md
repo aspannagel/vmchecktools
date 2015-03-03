@@ -1,4 +1,4 @@
-# vmchecktools
+# vmchecktools - Easily upgrade of VMware-Tools and kernel on Linux VM's
 
 This script project was intential born while a hugh amount of virtual RedHat/CentOS
 servers needed to be kept current as easly as possibly.
@@ -10,7 +10,6 @@ time during patching cycles.
 The idea was born to look for something to make this as easily as upgrading any other 
 package in an satserv/apcewalk managed environment. As none of the scripts found on the 
 web did all the above, the idea of writting an own was born to safe the syasdmins day...
-
 
 Features vmchecktools is used for:
 - make VMware-Tools installation/update for Linux/Unix as easy as package-managment
