@@ -6,6 +6,6 @@ Features vmchecktools is used for:
 - reinstall vmware-tools while first boot into a certain kernel
 
 Some comments:
-- written as init-script, alos usable as standalone script
-- heavily tested and productive in a hugh RHEL/CentOS4-7 environment.
+- written as init-script, also usable as standalone script
+- heavily tested and productive in a hugh RHEL/CentOS[4-7] environment
 - spec-file is avail, so a rpm can be build with vmchecktools and official VMware-Tools 
