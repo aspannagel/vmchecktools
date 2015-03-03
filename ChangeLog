@@ -1,0 +1,179 @@
+Initial version imported into github
+
+##################
+
+Adding former Changelog for archiving:
+
+total revisions: 23;    selected revisions: 23                                                                                                       
+description:                                                                                                                                         
+----------------------------
+revision 1.23
+date: 2015/03/03 12:50:34;  author: aspannag;  state: Exp;  lines: +12 -1
+add rpm infos for installed open-vm-tools and former vmware-tools
+----------------------------
+revision 1.22
+date: 2015/03/03 09:21:39;  author: aspannag;  state: Exp;  lines: +18 -10
+- fixes to work on RHEL/CentOS7 properly
+- reduce the unistall/install fix to RHEL/CentOS5 only
+  cause within RHEL/CentOS5 more related x to mkinitrd handeling modules different since newer version
+  so loaded modules that have been removed from lib/modules resulults in an exit state !=0
+----------------------------
+revision 1.21
+date: 2015/02/26 14:36:47;  author: aspannag;  state: Exp;  lines: +25 -3
+workaround for broken upgrade of vmware-tools on current CentOS/REL5
+caused by mkinitrd exit with an error after uninstall and before install
+of new vmware-tools.
+----------------------------
+revision 1.20
+date: 2015/02/18 19:05:06;  author: aspannag;  state: Exp;  lines: +2 -2
+fix for rare cases where tools were removed manually
+----------------------------
+revision 1.19
+date: 2014/10/30 14:40:13;  author: aspannag;  state: Exp;  lines: +2 -1
+add detection of ESXi 5.5U2
+----------------------------
+revision 1.18
+date: 2014/06/30 11:59:56;  author: aspannag;  state: Exp;  lines: +35 -14
+cleanup of obsolete backup initrd/ramfs within /boot at earliest time
+- older init*.img.BAK than current/boot kernel won't be removed
+----------------------------
+revision 1.17
+date: 2014/01/20 13:21:33;  author: aspannag;  state: Exp;  lines: +2 -1
+adding detection of ESXi5.5 (BiosDate: 07/30/2013)
+----------------------------
+revision 1.16
+date: 2013/11/22 14:21:55;  author: aspannag;  state: Exp;  lines: +15 -8
+implemented more detailed esx host version info.
+----------------------------
+revision 1.15
+date: 2013/11/06 15:13:43;  author: aspannag;  state: Exp;  lines: +24 -4
+fix dmi(decode) info for RHEL/CentOS6
+- use dmi infos found below /sys/devices/virtual/dmi/id with newer kernels
+- add alternate path to dmidecode for older kernels
+----------------------------
+revision 1.14
+date: 2013/07/17 12:31:32;  author: aspannag;  state: Exp;  lines: +27 -14
+final version fully supporting RHEL6 and CentOS6
+----------------------------
+revision 1.13
+date: 2013/07/12 15:19:34;  author: aspannag;  state: Exp;  lines: +10 -5
+non critical fix for CentOS/RHEL6
+----------------------------
+revision 1.12
+date: 2013/07/10 11:54:12;  author: aspannag;  state: Exp;  lines: +25 -6
+- fix for staying on older module versions (updates/vmware supersedes misc)
+- adding vmw_pvscsi module for newer kernels
+----------------------------
+revision 1.11
+date: 2013/07/08 14:28:42;  author: aspannag;  state: Exp;  lines: +4 -0
+add revision info
+----------------------------
+revision 1.10
+date: 2013/07/08 14:16:31;  author: aspannag;  state: Exp;  lines: +119 -34
+rewrite:
+- added distribution/release detection
+- reorg for easier readability of grown code
+- added more inline documentation
+- minor fixes to escape non critcal errors
+----------------------------
+revision 1.9
+date: 2012/10/23 13:56:07;  author: aspannag;  state: Exp;  lines: +38 -63
+revert to last stable - rewrite was commited by fault...
+----------------------------
+revision 1.8
+date: 2012/10/23 13:52:25;  author: aspannag;  state: Exp;  lines: +63 -38
+adding eu
+----------------------------
+revision 1.7
+date: 2012/10/19 19:10:58;  author: aspannag;  state: Exp;  lines: +5 -3
+fix if no vmware-tools installed and not installed through rpm
+----------------------------
+revision 1.6
+date: 2012/10/08 10:48:39;  author: aspannag;  state: Exp;  lines: +6 -0
+exit when server isn't a vm
+----------------------------
+revision 1.5
+date: 2012/08/30 09:52:13;  author: aspannag;  state: Exp;  lines: +3 -1
+enshure currentdir is set otherwise mkinitrd may hang
+----------------------------
+revision 1.4
+date: 2012/08/28 10:48:52;  author: aspannag;  state: Exp;  lines: +4 -1
+fix for default != 0 within grubs conf
+----------------------------
+revision 1.3
+date: 2012/08/27 14:51:09;  author: aspannag;  state: Exp;  lines: +9 -3
+fix-  mkinitrd sometimes hangs
+----------------------------
+revision 1.2
+date: 2012/08/08 21:33:12;  author: aspannag;  state: Exp;  lines: +12 -8
+- fix for guessed esxi version lt 5
+- adding clobber-kernel-modules when running vmware-install
+----------------------------
+revision 1.1
+date: 2012/08/03 22:49:00;  author: aspannag;  state: Exp;
+initial import of init script from vmchecktools rpm (former vmware-tools-check)
+- installes latest vmware-tools if available
+- enshures initrd of a new kernel includes latest pvscsi/vmxnet(3) modules
+  before booting with it
+- re-runs vmware-config-tools.pl once per kernel, so also remaining modules
+  get installed
+=============================================================================
+
+#############
+
+Changelog from former vmware-tools-check:
+
+warning: ./Packages/CentOS/5/x86_64/vmware-tools-check-1-14.noarch.rpm: Header V3 DSA/SHA1 Signature, key ID 1cdb2ba8: NOKEY
+* Do Aug 02 2012 Alexander Spannagel
+- adding lock handeling
+
+* Mi Aug 01 2012 Alexander Spannagel
+- fix rebuild initrd after upgrade
+- upgrade vmware-tools before reboot
+- running chkconfig with reset+resetpriorities
+- remove vmware-tools for ver4 and earlier
+
+* Do Jul 26 2012 Alexander Spannagel
+- adding check to rebuild initrd after upgrade
+- writing lock so stop will work
+- fix logic for new kernel - take the one server boots
+
+* Mi Jun 13 2012 Alexander Spannagel
+- updrade toolsv5 to 8.6.5-652272
+
+* Fr Mär 23 2012 Alexander Spannagel
+- fix Bios Release 10/13/2009 is also ESX5
+- get rid of symlinks within tmpdir
+
+* Fr Mär 23 2012 Alexander Spannagel
+- fix logic for latest version
+- Bios release >2009 looks like ESX5
+- renamed init so it may install before usual tools start
+
+* Mi Mär 21 2012 Alexander Spannagel
+- fix typo within init script
+
+* Mi Mär 21 2012 Alexander Spannagel
+- fix upgrade so current version and available version are compared
+- skip install if installed version is newer
+- cleanup vmware-tools-distrib after install
+
+* Di Mär 20 2012 Alexander Spannagel
+- upgraded toolsv5 to 8.6.0-515842
+
+* Mo Mär 19 2012 Alexander Spannagel
+- check for esx5 and use best matching VMware-Tools
+- use same chkconfig line as vmware-tools within init-script
+
+* Mo Feb 20 2012 Alexander Spannagel
+- initial spec
+
+#############
+
+Here some links that was initial found while looking through the web
+http://www.rdoxenham.com/?p=218
+http://vmetc.com/2008/08/31/automating-vmware-tools-installs-and-upgrades-in-linux-guests/ 
+
+Providing a compilation environment on production servers isn't usually a good idea, so the tools
+build was skipped and only pre-build modules from native VMware-tools archive were used.
+
