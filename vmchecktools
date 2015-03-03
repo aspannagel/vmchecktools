@@ -1,0 +1,364 @@
+#!/bin/sh
+#
+###
+# chkconfig: 2345 03 96
+# description: re-install of vmware-tools after kernel update at boot
+###
+#
+# $Id: vmchecktools,v 1.22 2015/03/03 09:21:39 aspannag Exp $
+#
+
+
+#
+TMPDIR="/var/tmp/vmchecktools"
+LOCKFILE="/var/lock/subsys/vmchecktools"
+
+# Need to be root to run this script.
+if [ $(id -u) -ne 0 ]; then 
+  echo "WARN: You need to be root to use this command !"
+  exit 1
+fi
+
+##
+## Detecting hardware specific info
+##
+
+# Determin Manufacturer and BiosDate
+# - using info from /sys/devices/virtual/dmi/id
+# - otherwise use dmidecode on older kernels
+if [ -d /sys/devices/virtual/dmi/id ]
+then
+  HW=$(cat /sys/devices/virtual/dmi/id/sys_vendor)
+  BIOSDATE=$(cat /sys/devices/virtual/dmi/id/bios_date)
+else  
+  DMIDECODE="/usr/sbin/dmidecode"
+  [ ! -e $DMIDECODE ] && DMIDECODE="/usr/local/bin/dmidecode"
+  HW=$($DMIDECODE -s system-manufacturer 2>/dev/null)
+  BIOSDATE=$($DMIDECODE 2>/dev/null|grep "Release Date:"|cut -f2 -d:|tr -d ' ')
+fi
+# Running this script on physical servers doesn't make sense.
+if [ "$HW" != "VMware, Inc." ]
+then
+  if [ "$HW" == "" ]
+  then
+    echo "Can't determin Manufacturer, exiting!" 
+  else  
+    echo "Doesn't look like a vm (Manufacturer: '$HW'), exiting!" 
+  fi  
+  exit 1
+fi
+
+##
+## Detecting distribution
+##
+
+# Installation depends on distribution and it's release
+if [ -e /usr/bin/lsb_release ]
+then
+  OSDIST="$(/usr/bin/lsb_release -is)"
+  OSPSEUDONAME="$(/usr/bin/lsb_release -cs)"
+  OSRELEASE=$(/usr/bin/lsb_release -rs)
+elif [ -f /etc/redhat-release ] ; then
+  OSDIST=`cat /etc/redhat-release |sed s/\ release\ .*//`
+  OSPSEUDONAME=`cat /etc/redhat-release | sed s/.*\(// | sed s/\).*$//`
+  OSRELEASE=`cat /etc/redhat-release | sed s/.*release\ // | sed s/\ .*//`
+elif [ -f /etc/SUSE-release ] ; then
+  OSDIST=`cat /etc/SUSE-release | tr "\n" ' '| sed s/VERSION.*//`
+  OSRELEASE=`cat /etc/SUSE-release | tr "\n" ' ' | sed s/.*=\ //`
+elif [ -f /etc/mandrake-release ] ; then
+  OSDIST='Mandrake'
+  OSPSEUDONAME=`cat /etc/mandrake-release | sed s/.*\(// | sed s/\)//`
+  OSRELEASE=`cat /etc/mandrake-release | sed s/.*release\ // | sed s/\ .*//`
+elif [ -f /etc/debian_version ] ; then
+  OSDIST="Debian `cat /etc/debian_version`"
+  OSRELEASE=""
+else
+  OSDIST="unknown"
+  OSRELEASE="unknown"
+fi
+if [ "$OSPSEUDONAME" != "" ]
+then
+  OSPSEUDONAME=" ($OSPSEUDONAME)"
+fi
+if [ "$OSDIST" == "RedHatEnterpriseServer" -o "$OSDIST" == "Red Hat Enterprise Linux Server" ]
+then
+  OSDIST="RHEL"
+fi
+
+VMStatus="Distro:
+  OS:      $OSDIST$OSPSEUDONAME
+  Release: $OSRELEASE"
+
+##
+## Detecting Kernel
+##
+
+# Determine the current+boot kernel and set path to misc modules dir.
+# This is required to decide if initrd/initramfs needs to be rebuild.
+RunningKernel=$(uname -r)
+if [ -e /boot/grub/menu.lst ]
+then
+  DefaultBoot=$(grep default /boot/grub/menu.lst 2>/dev/null|cut -f2 -d=)
+  [ -z $DefaultBoot ] && DefaultBoot="0"
+  DefaultBoot=$(( $DefaultBoot  + 1 ))
+  BootKernel=$(grep "^title " /boot/grub/menu.lst |head -$DefaultBoot|tail -1|sed "s/^.*(\(.*\))$/\1/")
+  MODMISCCURRENT="/lib/modules/$RunningKernel/misc"
+  MODMISCBOOT="/lib/modules/$BootKernel/misc"
+else
+  # grub2 introduced with RHEL/CentOS7
+  BootKernel=$(grep -w menuentry /boot/grub2/grub.cfg|head -1|sed "s/^[^(]*(\([^)]*\)).*$/\1/")
+  MODMISCCURRENT="/lib/modules/$RunningKernel/updates"
+  MODMISCBOOT="/lib/modules/$BootKernel/updates"
+fi
+# CheckFile is to lock which vmware-tools version has been installed for the current kernel. 
+VMToolsCheckFile="$MODMISCCURRENT/.vmware_installed"
+# Determine usage of dracut/mkinird to identify required ramdisk used during boot
+# in newer distros dracut is used instead of mkinitrd. (example: Fed12, RHEL/CentOS6)
+if [ -e /sbin/dracut ]
+then
+  BOOTIMG=/boot/initramfs-$BootKernel.img
+  RUNNINGIMG=/boot/initramfs-$RunningKernel.img
+  # additional drivers should have been added to dracut.conf.d/ by vmware install..
+  MKBOOTIMG="/sbin/dracut"
+else
+  BOOTIMG=/boot/initrd-$BootKernel.img
+  RUNNINGIMG=/boot/initrd-$RunningKernel.img
+  MKBOOTIMG="/sbin/mkinitrd --with=pvscsi --with=vmxnet --with=vmxnet3"
+fi
+
+VMStatus="$VMStatus
+Kernel:
+  Current: $RunningKernel
+  Boot:    $BootKernel
+  Boot-RD: $BOOTIMG"
+
+##
+## Detecting esxi-version
+##
+
+# The version of the vmware-tools to be installed may depend on the ESX host version.
+# BIOS date gives a glue of the ESX host version vm is running on.
+DATE=$(echo $BIOSDATE| awk -F/ '{ print $3$1$2 }')
+case $DATE in
+  20040421) VERSION="2.5" ;;
+  20060417) VERSION="3.0" ;;
+  20080130) VERSION="3.5" ;;
+  20080815) VERSION="4"   ;;
+  20090922) VERSION="4U1" ;;
+  20091013) VERSION="4.1" ;;
+  20110107) VERSION="5"   ;;
+  20110921) VERSION="5U1" ;;
+  20120622) VERSION="5.1" ;;
+  20130730) VERSION="5.5" ;;
+  20140414) VERSION="5.5U2" ;;
+  *) VERSION="UNKNOWN" 
+esac
+
+VMStatus="$VMStatus
+VM-BIOS:
+  Release: $BIOSDATE
+  Host:    ESXi${VERSION}"
+
+##
+## Detecting installed/installable vmware-tools
+##
+
+# With a ESX host version specific file within TMPDIR the installable vmware-tools
+# can be pinned on an older version than the latest within TMPDIR.
+# Current vmware-tools 5.1 version is compatible down to vm's running on ESX4.
+if [ -e $TMPDIR/vmware-tools-v${VERSION}.ver ]
+then
+  VMToolsAvailVersion=$(cat $TMPDIR/vmware-tools-v${VERSION}.ver)
+  VMToolsAvailFILE="VMwareTools-$(echo $VMToolsAvailVersion|sed 's/ build//').tar.gz"
+else
+  VMToolsAvailVersion="$(ls $TMPDIR/VMwareTools*tar.gz 2>/dev/null|sed -e 's/^.*\/VMwareTools-//' -e 's/.tar.gz$//' -e 's/-/::/' -e 's/\./:/g'|sort -n -t: -k1 -k2 -k3 -k5|tail -1|sed -e 's/::/ build-/' -e 's/:/./g')"
+  VMToolsAvailFILE="VMwareTools-$(echo $VMToolsAvailVersion|sed 's/ build//').tar.gz"
+fi
+
+# Get version of currently installed vmware-tools.
+VMToolsVersion=$(vmware-config-tools.pl --help 2>&1 | awk '$0 ~ /^VMware Tools [0-9]/ { print $3,$4 }')
+
+# Find the latest vmware-tools - either the latest provided in TMPDIR and/or the installed one.
+VMToolsLatest="$(echo -e "$VMToolsAvailVersion\n$VMToolsVersion"|tr '.' ':'|sort -n -k1 -k2 -k3 -k4 -t:|tr ':' '.'|tail -1)"
+# Exiting if empty. No Vmware-Tools installed and nothing to install within TMPDIR.
+if [ "$VMToolsLatest" == "" ]; then 
+  echo "$VMStatus"
+  echo "WARN: Neither vmware-tools installed nor available within $TMPDIR, exiting!"
+  exit 1
+fi
+
+VMStatus="$VMStatus
+VM-TOOLS:
+  Current: ${VMToolsVersion:=not installed}
+  Avail:   ${VMToolsAvailVersion:=none}
+  Latest:  ${VMToolsLatest:=}"
+
+##
+## All set, ready to go...
+##
+
+# The latest vmware-tools will be installed once per kernel through this script, when using start/stop/install.
+case "$1" in
+  start|stop|install)
+    echo "$VMStatus"
+    echo
+    # Checking if vmware-tools needed to be installed/reconfigured
+    echo "Check VM-Tools installation:"
+    if [[ "$VMToolsVersion" == "not installed" || "$VMToolsVersion" != "$VMToolsLatest" || ! -e $VMToolsCheckFile || $(grep -c "$VMToolsLatest" $VMToolsCheckFile) -eq 0 ]]
+    then
+      # When available version is latest and not same as current, a full install is needed.
+      if [[ "$VMToolsAvailVersion" == "$VMToolsLatest" && "$VMToolsAvailVersion" != "$VMToolsVersion" ]]
+      then
+        if [[ "$VMToolsVersion" == "not installed" ]]
+        then
+          echo "Looks like a fresh installation..."
+        else
+          echo "Newer version is available..."
+        fi
+        cd $TMPDIR && /bin/tar zxf $VMToolsAvailFILE
+        cd vmware-tools-distrib  && (
+          if [[ $(echo "$OSDIST"|cut -f1 -d.) == '5' && "$VMToolsVersion" != "not installed" ]]
+          then
+            # Uninstall former version before - with CentOS/REL 5.11 from Jan2015
+            # upgrade exit with an error due to mkinitrd missing pvscsi module during deinstall
+            # and no install is run leaving the vm with no tools around which is bad....
+            if [ -e /usr/bin/vmware-uninstall-tools.pl ]
+            then
+              echo "Uninstall current version: $VMToolsVersion"
+              /usr/bin/vmware-uninstall-tools.pl
+              [ -e $VMToolsCheckFile ] && rm -f $VMToolsCheckFile
+              echo 
+            else
+              echo "WARN: vmware-uninstall-tools.pl not around, trying to just run install..."
+            fi
+          fi
+          echo
+          echo "Install latest version: $VMToolsLatest"
+          ./vmware-install.pl -d --clobber-kernel-modules=vmxnet,vmxnet3,pvscsi && (
+            VMToolsVersion=$(vmware-config-tools.pl --help 2>&1 | awk '$0 ~ /^VMware Tools [0-9]/ { print $3,$4 }')
+            echo "$VMToolsVersion" > $VMToolsCheckFile
+            echo "Installed VMware-Tools version: $VMToolsVersion"
+            # Cleanup backup of initrd/ramfs within /boot to safe diskspace.
+            if [ -e $RUNNINGIMG.BAK ]
+            then
+              rm -f $RUNNINGIMG.BAK
+              echo "Remove obsolete initrd/initramfs backup of running kernel."
+            fi
+          )
+        )
+        # Cleanup to safe diskspace.
+        [ -d $TMPDIR/vmware-tools-distrib ] && rm -rf $TMPDIR/vmware-tools-distrib
+      else
+        echo "No newer version is available..."
+	# When config of current version hasn't re-run for this kernel - just do it once.
+        if [[ ! -e $VMToolsCheckFile || $(grep -c "$VMToolsVersion" $VMToolsCheckFile) -eq 0 ]]
+        then
+          # First boot into a new kernel requires re-run of vmware-config-tools.pl
+          # to add all the remaining pre-build modules. If the vmware-tools were installed
+          # through other means, this wouldn't be required. But it doesn't hurt running once.
+          echo "Re-run of config tool required for this kernel..."
+          vmware-config-tools.pl -d --clobber-kernel-modules=vmxnet,vmxnet3,pvscsi && (
+            echo "$VMToolsVersion" > $VMToolsCheckFile
+            echo "ReConfigured VMware-Tools version: $VMToolsVersion"
+            # Cleanup backup of initrd/ramfs within /boot to safe diskspace.
+            if [ -e $RUNNINGIMG.BAK ]
+            then
+              rm -f $RUNNINGIMG.BAK
+              echo "Remove obsolete initrd/initramfs backup of running kernel."
+            fi
+          )
+        else
+          echo "Unchanged VMware-Tools version: $VMToolsVersion"
+        fi
+      fi
+    else
+      echo "Latest version already installed. Nothing todo."
+    fi
+
+    # Create lockfile - this will enshure that script will be called on a shutdown/reboot
+    # this is required to enshure that latest modules are added to initrd/initramfs after a kernel update
+    touch $LOCKFILE
+
+    # ReBuild initrd/initramfs like vmware-config-tools.pl would do, when booting a kernel different than current.
+    # Running vmware-config-tools.pl with -k would do also, but wouldn't use the pre-build modules and
+    # so requires a complete compilation env.
+    echo
+    echo "Checking installed modules for boot kernel:"
+    if [ "$RunningKernel" != "$BootKernel" ]
+    then
+      mkdir $MODMISCBOOT > /dev/null 2>&1
+      # Newer kernel version provide vmw_pvscsi, pvscsi is an alias for.
+      for module in pvscsi vmxnet vmxnet3 vmw_pvscsi
+      do
+        # Newest modules are within updates/vmware instead of misc, so take these if exists.
+        if [ -e $MODMISCCURRENT/../updates/vmware/$module.ko ]
+        then
+          MODSOURCE=$MODMISCCURRENT/../updates/vmware/$module.ko
+        else
+          MODSOURCE=$MODMISCCURRENT/$module.ko
+        fi
+        # Put module into updates/vmware, if module is already around for new kernel.
+# TODO: ignore modules around that are equal / modversion?
+        if [ $(/usr/bin/find $MODMISCBOOT/.. -name $module.ko | grep -v /misc/$module.ko |grep $module.ko | wc -l) -gt 0 ]
+        then
+          MODDEST=$MODMISCBOOT/../updates/vmware/$module.ko
+          [ ! -d $MODMISCBOOT/../updates/vmware ] && mkdir -p $MODMISCBOOT/../updates/vmware
+        else
+          MODDEST=$MODMISCBOOT/$module.ko
+        fi
+        if [ -e $MODSOURCE ]
+        then
+          # Copy modules if source differs from destination.
+# TODO: Maybe module version should be used?
+          if [ ! -e $MODDEST -o $(/usr/bin/diff --brief $MODSOURCE $MODDEST 2>/dev/null | wc -l) -ne 0 ]
+          then
+            cp --preserve=all $MODSOURCE $MODDEST >/dev/null 2>&1
+            MODCOPY=1
+          fi
+        fi
+      done
+      # Assuming that initrd/initramfs already includes pvscsi/vmxnet(3), when modules were already there 
+      if [ "$MODCOPY" == "1" ]
+      then
+        echo "Copy VMware modules for boot kernel and rebuild initrd/initramfs."
+        depmod -a $BootKernel > /dev/null 2>&1
+        mv $BOOTIMG $BOOTIMG.BAK
+        # Changing into $TMPDIR so mkinitrd won't hang while run through init.
+        cd $TMPDIR
+        CMD="$MKBOOTIMG $BOOTIMG $BootKernel"
+        echo "running: $CMD"
+        $CMD
+        if [ -s $BOOTIMG ]
+        then
+          echo "VMware modules added: pvscsi vmxnet vmxnet3"
+          # If pretty shure all is fine, uncomment next line to cleanup diskspace
+          #rm $BOOTIMG.BAK
+        else
+          # Oops... New initrd/initramfs couldn't be created - reverting to former....
+          mv $BOOTIMG.BAK $BOOTIMG
+          echo "ReBuild initrd/initramfs has trouble, keeping previous one!"
+        fi
+      else
+        echo "VMware modules already installed for boot kernel: $BootKernel"
+      fi
+    else
+      echo "Current and boot kernel are the same, so VMware modules are all set."
+      # Cleanup backup of initrd/ramfs within /boot to safe diskspace.
+      if [ -e $BOOTIMG.BAK ]
+      then
+          rm -f $BOOTIMG.BAK
+          echo "Booted with new initrd/initramfs, remove existing backup."
+      fi
+    fi
+    # only an explicitly stop should remove the lock
+    [[ -e $LOCKFILE && "$1" == "stop" ]] && rm -f $LOCKFILE
+  ;;
+  status)
+    echo "$VMStatus"
+  ;;
+  *)
+        echo "Usage: $0 {start|stop|status|install}"
+        exit 1
+esac
+
+exit 0
