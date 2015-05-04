@@ -1,4 +1,5 @@
-# vmchecktools - Easily upgrade of VMware-Tools and kernel on Linux VM's
+# vmchecktools
+Easily upgrade of VMware-Tools taking care of kernel updates on Linux VM's
 
 This script project was intential born while a hugh amount of virtual RedHat/CentOS
 servers needed to be kept current as easly as possibly.
