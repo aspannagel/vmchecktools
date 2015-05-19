@@ -5,7 +5,7 @@
 # description: re-install of vmware-tools after kernel update at boot
 ###
 #
-# $Id: vmchecktools,v 1.23 2015/03/03 12:50:34 aspannag Exp $
+# $Id: vmchecktools,v 1.24 2015/05/19 08:28:48 aspannag Exp $
 #
 
 
@@ -228,7 +228,7 @@ case "$1" in
         fi
         cd $TMPDIR && /bin/tar zxf $VMToolsAvailFILE
         cd vmware-tools-distrib  && (
-          if [[ $(echo "$OSDIST"|cut -f1 -d.) == '5' && "$VMToolsVersion" != "not installed" ]]
+          if [[ $(echo "$OSRELEASE"|cut -f1 -d.) == '5' && "$VMToolsVersion" != "not installed" ]]
           then
             # Uninstall former version before - with CentOS/REL 5.11 from Jan2015
             # upgrade exit with an error due to mkinitrd missing pvscsi module during deinstall

@@ -9,7 +9,8 @@
 #%define toolsv5 9.4.5-1734305
 #%define toolsv5 9.4.6-1770165
 #%define toolsv5 9.4.10-2092844
-%define toolsv5 9.4.11-2400950
+#%define toolsv5 9.4.11-2400950
+%define toolsv5 9.4.12-2627939
 %define oldinitscript vmware-check-tools
 %define oldname vmware-tools-check
 %define lockdir /var/lock/subsys
@@ -18,7 +19,7 @@
 Summary: Install vmware-tools for current kernel at boot
 Name: vmchecktools
 Version: 1
-Release: 32
+Release: 34
 License: GPL
 Group: System Environment/Base
 Source0: %{name}
@@ -110,6 +111,11 @@ fi
 # - only binaries within vmware-tools-distrib/lib/modules/binary/bld-2.6.18-8.el5-x86_64smp-RHEL5/objects/vmxnet3.o required
 
 %changelog
+* Tue May 19 2015 Alexander Spannagel
+- added newest vmchecktools script (1.24)
+* Tue May 19 2015 Alexander Spannagel
+- added newest vmchecktools script (1.23)
+- upgrade to latest VMwareTools-9.4.12-2627939
 * Thu Feb 26 2015 Alexander Spannagel
 - added newest vmchecktools script (1.21)
   fixing broken upgrade due to mkinitrd exit status
