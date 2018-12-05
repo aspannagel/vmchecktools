@@ -10,7 +10,18 @@
 #%define toolsv5 9.4.6-1770165
 #%define toolsv5 9.4.10-2092844
 #%define toolsv5 9.4.11-2400950
-%define toolsv5 9.4.12-2627939
+#%define toolsv5 9.4.12-2627939
+#%define toolsv6 9.10.1-2791197
+#%define toolsv6 9.10.5-2981885
+#%define toolsv6 10.0.0-3000743
+#%define toolsv6 10.0.6-3560309
+#%define toolsv6 10.0.9-3917699
+#%define toolsv6 10.1.0-4449150
+#%define toolsv6 10.1.7-5541682
+#%define toolsv6 10.1.15-6677369
+#%define toolsv6 10.2.0-7253323
+#%define toolsv6 10.2.5-8068406
+%define toolsv6 10.3.2-9925305
 %define oldinitscript vmware-check-tools
 %define oldname vmware-tools-check
 %define lockdir /var/lock/subsys
@@ -19,14 +30,17 @@
 Summary: Install vmware-tools for current kernel at boot
 Name: vmchecktools
 Version: 1
-Release: 34
+Release: 49
 License: GPL
 Group: System Environment/Base
 Source0: %{name}
 #Source1: VMwareTools-%toolsv4.tar.gz
-Source2: VMwareTools-%{toolsv5}.tar.gz
+#Source2: VMwareTools-%{toolsv5}.tar.gz
+Source3: VMwareTools-%{toolsv6}.tar.gz
 BuildRoot: /tmp/%{name}-buildroot
 BuildArch: noarch
+Packager:  Monster Technologies (unix@monster.com)
+Vendor: Monster
 Provides: vmware-tools-check = 0:1-15
 Obsoletes: vmware-tools-check < 0:1-15
 %define _source_payload w9.gzdio
@@ -55,7 +69,8 @@ install -p -m 755 %{SOURCE0} $RPM_BUILD_ROOT%{_initrddir}/%{name}
 #install -p -m 755 %{SOURCE0} $RPM_BUILD_ROOT%{_initrddir}/%{name}
 mkdir -p $RPM_BUILD_ROOT/%{tmpdir}/%{name}
 #cp %{SOURCE1} $RPM_BUILD_ROOT/%{tmpdir}/%{name}
-cp %{SOURCE2} $RPM_BUILD_ROOT/%{tmpdir}/%{name}
+#cp %{SOURCE2} $RPM_BUILD_ROOT/%{tmpdir}/%{name}
+cp %{SOURCE3} $RPM_BUILD_ROOT/%{tmpdir}/%{name}
 cd $RPM_BUILD_ROOT/%{tmpdir}/%{name}
 #echo %toolsv4|sed "s/-/ build-/" > vmware-tools-v4.ver
 #echo %toolsv5|sed "s/-/ build-/" > vmware-tools-v5.ver
@@ -104,13 +119,45 @@ fi
 #%{tmpdir}/%{name}/*
 #%{tmpdir}/%{name}/%{Source1}
 #%{tmpdir}/%{name}/vmware-tools-v4.ver
-%{tmpdir}/%{name}/VMwareTools-%{toolsv5}.tar.gz
+#%{tmpdir}/%{name}/VMwareTools-%{toolsv5}.tar.gz
+%{tmpdir}/%{name}/VMwareTools-%{toolsv6}.tar.gz
 #%{tmpdir}/%{name}/vmware-tools-v5.ver
 
 #TODO:
 # - only binaries within vmware-tools-distrib/lib/modules/binary/bld-2.6.18-8.el5-x86_64smp-RHEL5/objects/vmxnet3.o required
 
 %changelog
+* Thu Jul 12 2018 Alexander Spannagel
+- added newest vmchecktools script (1.35)
+* Fri Apr 20 2018 Alexander Spannagel
+- upgrade to latest VMwareTools-10.2.5-8068406
+- added newest vmchecktools script (1.34)
+  added ENABLE_CAF=no to vmware-config
+* Fri Jan 12 2018 Alexander Spannagel
+- upgrade to latest VMwareTools-10.2.0-7253323
+* Mon Oct 09 2017 Alexander Spannagel
+- upgrade to latest VMwareTools-10.1.15-6677369
+* Wed Jun 28 2017 Alexander Spannagel
+- upgrade to latest VMwareTools-10.1.7-5541682
+- added newest vmchecktools script (1.31)
+  added detection of ESXi6.5
+  giving status of vmtoolsd
+* Tue Mar 28 2017 Alexander Spannagel
+- upgrade to latest VMwareTools-10.1.0-4449150
+* Wed Sep 28 2016 Alexander Spannagel
+- added newest vmchecktools script (1.27) - added handling of open-vm-tools
+* Wed Aug 22 2016 Alexander Spannagel
+- upgrade to latest 10.0.9-3917699
+- added newest vmchecktools script (1.26) - added detection of ESXi6U1
+* Wed Apr 06 2016 Alexander Spannagel
+- upgrade to latest 10.0.6-3560309
+* Fri Mar 11 2016 Alexander Spannagel
+- upgrade to latest 10.0.0-3000743
+* Tue Sep 11 2015 Alexander Spannagel
+- upgrade to latest VMwareTools-9.10.5-2981885
+* Tue Aug 11 2015 Alexander Spannagel
+- added newest vmchecktools script (1.25) - added detection of ESXi6
+- upgrade to latest VMwareTools-9.10.1-2791197
 * Tue May 19 2015 Alexander Spannagel
 - added newest vmchecktools script (1.24)
 * Tue May 19 2015 Alexander Spannagel
